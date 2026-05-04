@@ -3,7 +3,7 @@
 // Connects to the Bridge API on the VPS
 // ═══════════════════════════════════════════════
 
-const API = '/api';
+const API = 'https://wow.grudge-studio.com/api';
 
 const App = {
   // Session state
