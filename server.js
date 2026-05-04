@@ -10,7 +10,15 @@ const guac = require('./lib/guacamole');
 const path = require('path');
 
 const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(cors({
+  origin: [
+    'https://grudge-arena-frontend.pages.dev',
+    'https://wow.grudge-studio.com',
+    'http://localhost:3000',
+    ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []),
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Security headers
