@@ -5,6 +5,7 @@ const character = require('./lib/character');
 const queue = require('./lib/queue');
 const soap = require('./lib/mangos-soap');
 const db = require('./lib/mangos-db');
+const guac = require('./lib/guacamole');
 
 const path = require('path');
 
@@ -20,16 +21,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ──────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { grudgeId } = req.body;
-    if (!grudgeId) return res.status(400).json({ error: 'grudgeId required' });
+    // Accept puterUuid (from Puter SDK auth) or legacy grudgeId
+    const grudgeId = req.body.puterUuid || req.body.grudgeId;
+    if (!grudgeId) return res.status(400).json({ error: 'Authentication required' });
 
     const account = await character.loginOrCreate(grudgeId);
+
+    // Track session
+    if (req.body.puterToken) {
+      activeSessions.set(account.accountId, {
+        puterUuid: grudgeId,
+        puterUsername: req.body.puterUsername || null,
+        connectedAt: Date.now(),
+      });
+    }
+
     res.json(account);
   } catch (e) {
     console.error('Auth error:', e);
     res.status(500).json({ error: e.message });
   }
 });
+
+// Active player sessions
+const activeSessions = new Map();
 
 // ──────────────────────────────────────────────
 // CHARACTER — Create premade level 60
@@ -123,29 +138,39 @@ app.get('/api/record/:accountId', async (req, res) => {
 // ──────────────────────────────────────────────
 app.post('/api/play/session', async (req, res) => {
   try {
-    const { accountId, username, password } = req.body;
+    const { accountId, username } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId required' });
 
-    // Generate a Guacamole connection URL for this player
-    // The Guacamole server runs the WoW client with their credentials
-    const guacHost = process.env.GUAC_HOST || 'localhost';
-    const guacPort = process.env.GUAC_PORT || '8080';
-
-    // Connection params — Guacamole will RDP/VNC into a session running WoW
-    const sessionUrl = `http://${guacHost}:${guacPort}/guacamole/#/client/` +
-      Buffer.from(`arena-${accountId}\0c\0default`).toString('base64');
+    // Create or reuse a Guacamole RDP session for this player
+    const session = await guac.getOrCreateSession(accountId);
 
     res.json({
-      sessionUrl,
-      instructions: {
-        step1: 'Click the session URL to open WoW in your browser',
-        step2: `Login: ${username} / (your password)`,
-        step3: 'Your level 60 character is ready on GM Island',
-        step4: 'Talk to Premade NPCs for gear, then queue WSG',
-      },
+      connectionId: session.connectionId,
+      guacToken: session.guacToken,
+      wsUrl: session.wsUrl,
+      isNew: session.isNew,
+      username: username || 'arena',
     });
+  } catch (e) {
+    console.error('Play session error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Disconnect a game session
+app.post('/api/play/disconnect', async (req, res) => {
+  try {
+    const { accountId } = req.body;
+    const result = await guac.destroySession(accountId);
+    res.json({ disconnected: result });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Get game session stats
+app.get('/api/play/stats', async (req, res) => {
+  res.json(guac.getStats());
 });
 
 // ──────────────────────────────────────────────
@@ -193,4 +218,12 @@ app.listen(PORT, () => {
   console.log(`  Queue:     POST /api/queue/join`);
   console.log(`  Play:      POST /api/play/session`);
   console.log(`  Health:    GET  /api/health`);
+
+  // Cleanup expired game sessions every 5 minutes
+  setInterval(async () => {
+    const result = await guac.cleanupExpiredSessions();
+    if (result.cleaned > 0) {
+      console.log(`Cleaned up ${result.cleaned} expired game session(s)`);
+    }
+  }, 5 * 60 * 1000);
 });

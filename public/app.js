@@ -127,37 +127,47 @@ const App = {
     }
   },
 
-  // ── Login ─────────────────────────────────────
+  // ── Login (Puter Auth) ─────────────────────────
   bindLogin() {
     const btn = document.getElementById('loginBtn');
-    const input = document.getElementById('grudgeIdInput');
-
     btn.addEventListener('click', () => this.login());
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.login();
-    });
+
+    // Auto-login if already signed in to Puter
+    if (typeof puter !== 'undefined' && puter.auth.isSignedIn()) {
+      this.login();
+    }
   },
 
   async login() {
-    const input = document.getElementById('grudgeIdInput');
     const errorEl = document.getElementById('loginError');
-    const grudgeId = input.value.trim();
+    const statusEl = document.getElementById('loginStatus');
+    const btn = document.getElementById('loginBtn');
 
     errorEl.classList.add('hidden');
-    if (!grudgeId) {
-      this.showError(errorEl, 'Enter your Grudge ID');
-      return;
-    }
-
-    const btn = document.getElementById('loginBtn');
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = 'Authenticating...';
     btn.disabled = true;
-    btn.textContent = 'Connecting...';
 
     try {
+      // Step 1: Puter auth — opens popup if not signed in
+      if (typeof puter === 'undefined') throw new Error('Auth service unavailable');
+      if (!puter.auth.isSignedIn()) {
+        await puter.auth.signIn();
+      }
+      const puterUser = await puter.auth.getUser();
+      const puterToken = puter.authToken;
+
+      statusEl.textContent = `Welcome, ${puterUser.username}. Connecting to arena...`;
+
+      // Step 2: Send Puter UUID to bridge → MaNGOS account
       const res = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grudgeId }),
+        body: JSON.stringify({
+          puterUuid: puterUser.uuid,
+          puterUsername: puterUser.username,
+          puterToken,
+        }),
       });
 
       if (!res.ok) throw new Error((await res.json()).error || 'Login failed');
@@ -167,18 +177,21 @@ const App = {
       this.username = data.username;
       this.password = data.password || null;
       this.characters = data.characters || [];
+      this.puterUuid = puterUser.uuid;
 
       // Show nav and go to character view
+      statusEl.classList.add('hidden');
       this.showAuthNav();
       await this.loadCharOptions();
       this.showView('character');
       this.renderExistingChars();
 
     } catch (e) {
+      statusEl.classList.add('hidden');
       this.showError(errorEl, e.message);
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '<span class="btn-icon">⚔</span> Enter Arena';
+      btn.innerHTML = '<img src="favicon.png" alt="" class="btn-logo"> Sign In with Grudge';
     }
   },
 
@@ -514,9 +527,13 @@ const App = {
     }
   },
 
-  // ── Play Session ──────────────────────────────
+  // ── Play Session (Embedded Guacamole) ────────
+  guacClient: null,
+
   bindPlay() {
     document.getElementById('playBtn').addEventListener('click', () => this.launchSession());
+    document.getElementById('gameFullscreenBtn').addEventListener('click', () => this.toggleFullscreen());
+    document.getElementById('gameDisconnectBtn').addEventListener('click', () => this.disconnectGame());
   },
 
   async launchSession() {
@@ -525,39 +542,126 @@ const App = {
     btn.textContent = 'Launching...';
 
     try {
+      // Request a game session from the bridge
       const res = await fetch(`${API}/play/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accountId: this.accountId,
           username: this.username,
-          password: this.password || '(use your password)',
         }),
       });
 
       if (!res.ok) throw new Error((await res.json()).error || 'Session failed');
-      const data = await res.json();
+      const session = await res.json();
 
-      const instructionsEl = document.getElementById('playInstructions');
-      instructionsEl.classList.remove('hidden');
-      instructionsEl.innerHTML = `
-        <ol>
-          <li>${data.instructions.step1}</li>
-          <li>${data.instructions.step2}</li>
-          <li>${data.instructions.step3}</li>
-          <li>${data.instructions.step4}</li>
-        </ol>
-        <a href="${data.sessionUrl}" target="_blank" class="gilded-button full-width" style="margin-top:1rem;text-align:center;">
-          <span class="btn-icon">🌐</span> Open Game Stream
-        </a>
-      `;
+      // Switch to game view
+      this.showView('game');
+      document.getElementById('gameCharName').textContent = this.username;
+      document.getElementById('gameStatus').textContent = 'Connecting...';
+      document.getElementById('gameLoading').classList.remove('hidden');
+
+      // Connect Guacamole client
+      this.connectGuacamole(session.wsUrl);
 
     } catch (e) {
       console.error('Session error:', e);
+      alert(e.message);
     } finally {
       btn.disabled = false;
       btn.innerHTML = '<span class="btn-icon">▶</span> Launch Game Session';
     }
+  },
+
+  connectGuacamole(wsUrl) {
+    const canvasEl = document.getElementById('gameCanvas');
+    const loadingEl = document.getElementById('gameLoading');
+    const statusEl = document.getElementById('gameStatus');
+
+    // Clean up previous client
+    if (this.guacClient) {
+      this.guacClient.disconnect();
+      this.guacClient = null;
+      // Remove old display
+      const oldCanvas = canvasEl.querySelector('div:not(.game-loading)');
+      if (oldCanvas) oldCanvas.remove();
+    }
+
+    // Create WebSocket tunnel
+    const tunnel = new Guacamole.WebSocketTunnel(wsUrl);
+    const client = new Guacamole.Client(tunnel);
+    this.guacClient = client;
+
+    // Add display element
+    const display = client.getDisplay().getElement();
+    canvasEl.appendChild(display);
+
+    // Connect
+    client.connect();
+
+    // State handlers
+    client.onstatechange = (state) => {
+      const states = { 0: 'Idle', 1: 'Connecting...', 2: 'Waiting...', 3: 'Connected', 4: 'Disconnecting...', 5: 'Disconnected' };
+      statusEl.textContent = states[state] || 'Unknown';
+
+      if (state === 3) {
+        // Connected — hide loading
+        loadingEl.classList.add('hidden');
+      } else if (state === 5) {
+        // Disconnected
+        loadingEl.classList.remove('hidden');
+        loadingEl.querySelector('p').textContent = 'Disconnected';
+      }
+    };
+
+    client.onerror = (error) => {
+      console.error('Guacamole error:', error);
+      statusEl.textContent = 'Error';
+      loadingEl.classList.remove('hidden');
+      loadingEl.querySelector('p').textContent = error.message || 'Connection error';
+    };
+
+    // Forward keyboard events
+    const keyboard = new Guacamole.Keyboard(document);
+    keyboard.onkeydown = (keysym) => client.sendKeyEvent(1, keysym);
+    keyboard.onkeyup = (keysym) => client.sendKeyEvent(0, keysym);
+
+    // Forward mouse events
+    const mouse = new Guacamole.Mouse(display);
+    mouse.onmousedown = mouse.onmouseup = mouse.onmousemove = (mouseState) => {
+      client.sendMouseState(mouseState);
+    };
+
+    // Touch support
+    const touch = new Guacamole.Mouse.Touchpad(display);
+    touch.onmousedown = touch.onmouseup = touch.onmousemove = (mouseState) => {
+      client.sendMouseState(mouseState);
+    };
+  },
+
+  toggleFullscreen() {
+    const canvas = document.getElementById('gameCanvas');
+    if (!document.fullscreenElement) {
+      canvas.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  },
+
+  async disconnectGame() {
+    if (this.guacClient) {
+      this.guacClient.disconnect();
+      this.guacClient = null;
+    }
+
+    // Tell bridge to clean up
+    await fetch(`${API}/play/disconnect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountId: this.accountId }),
+    }).catch(() => {});
+
+    this.showView('queue');
   },
 
   // ── Records ───────────────────────────────────

@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=IM+Fell+English+SC&family=Spectral+SC:wght@300;400;600;700&family=MedievalSharp&family=Uncial+Antiqua&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="style.css">
+  <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
   <!-- ══════════════════════════════════════════════ -->
@@ -34,6 +35,7 @@
         <a href="#" data-view="character" class="nav-link hidden">Character</a>
         <a href="#" data-view="queue" class="nav-link hidden">Queue</a>
         <a href="#" data-view="records" class="nav-link hidden">Records</a>
+        <a href="#" data-view="game" class="nav-link hidden">Game</a>
       </nav>
       <div class="header-status">
         <span class="server-status" id="serverStatus">
@@ -63,14 +65,11 @@
 
         <div class="login-box fantasy-panel">
           <h3 class="section-title">Enter the Arena</h3>
-          <p class="login-info">Connect with your Grudge ID to create or access your MaNGOS account.</p>
-          <div class="input-group">
-            <label for="grudgeIdInput">Grudge ID</label>
-            <input type="text" id="grudgeIdInput" placeholder="Enter your Grudge ID..." class="fantasy-input">
-          </div>
+          <p class="login-info">Sign in to create or access your arena account.</p>
           <button id="loginBtn" class="gilded-button full-width">
-            <span class="btn-icon">⚔</span> Enter Arena
+            <img src="favicon.png" alt="" class="btn-logo"> Sign In with Grudge
           </button>
+          <div id="loginStatus" class="login-status hidden"></div>
           <div id="loginError" class="error-msg hidden"></div>
         </div>
 
@@ -231,6 +230,26 @@
       </div>
     </section>
 
+    <!-- GAME (embedded Guacamole canvas) -->
+    <section id="view-game" class="view">
+      <div class="game-header">
+        <div class="game-info">
+          <span id="gameCharName" class="gold-text"></span>
+          <span id="gameStatus" class="game-status">Connecting...</span>
+        </div>
+        <div class="game-controls">
+          <button id="gameFullscreenBtn" class="dark-button" title="Fullscreen">⛶ Fullscreen</button>
+          <button id="gameDisconnectBtn" class="dark-button" title="Disconnect" style="border-color:var(--crimson);color:var(--horde-light);">✕ Disconnect</button>
+        </div>
+      </div>
+      <div id="gameCanvas" class="game-canvas">
+        <div id="gameLoading" class="game-loading">
+          <div class="queue-spinner"></div>
+          <p>Launching WoW client...</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ══════════════════════════════════════════════ -->
@@ -244,6 +263,7 @@
     </div>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/guacamole-common-js@1.5.0/dist/guacamole-common.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
