@@ -676,6 +676,28 @@ a:hover { color: var(--gold-light); }
 
 .faction-crest { font-size: 3rem; }
 
+.faction-crest-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--gold-border);
+  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.faction-btn.alliance:hover .faction-crest-img,
+.faction-btn.alliance.selected .faction-crest-img {
+  border-color: var(--alliance-blue);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+}
+
+.faction-btn.horde:hover .faction-crest-img,
+.faction-btn.horde.selected .faction-crest-img {
+  border-color: var(--horde-red);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+}
+
 .faction-name {
   font-family: var(--font-heading);
   font-size: 1.1rem;
@@ -714,7 +736,10 @@ a:hover { color: var(--gold-light); }
 }
 
 .option-btn {
-  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
   background: hsl(225 25% 14%);
   border: 1px solid var(--stone);
   border-radius: var(--radius);
@@ -724,6 +749,20 @@ a:hover { color: var(--gold-light); }
   text-align: left;
   cursor: pointer;
   transition: all 0.15s;
+}
+
+.option-btn img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--stone);
+  flex-shrink: 0;
+}
+
+.option-btn.selected img {
+  border-color: var(--gold);
+  box-shadow: 0 0 6px rgba(212,175,55,0.3);
 }
 
 .option-btn:hover {

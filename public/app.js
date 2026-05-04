@@ -263,10 +263,11 @@ const App = {
     const validRaces = this.selectedFaction === 'Alliance' ? allianceRaces : hordeRaces;
 
     const races = this.charOptions.races;
+    const raceImgMap = { 1: 'human', 2: 'orc', 3: 'dwarf', 4: 'nightelf', 5: 'undead', 6: 'tauren', 7: 'gnome', 8: 'troll' };
     const raceList = document.getElementById('raceList');
     raceList.innerHTML = validRaces
       .filter(r => races[r])
-      .map(r => `<button class="option-btn" data-race="${r}">${races[r]}</button>`)
+      .map(r => `<button class="option-btn" data-race="${r}"><img src="img/races/${raceImgMap[r]}.jpg" alt="${races[r]}">${races[r]}</button>`)
       .join('');
 
     raceList.querySelectorAll('.option-btn').forEach(btn => {
@@ -294,7 +295,7 @@ const App = {
     const classList = document.getElementById('classList');
     classList.innerHTML = validClassIds
       .filter(id => classes[id])
-      .map(id => `<button class="option-btn" data-class="${id}" style="color:var(--class-${this.classVarName(id)})">${classes[id]}</button>`)
+      .map(id => `<button class="option-btn" data-class="${id}" style="color:var(--class-${this.classVarName(id)})"><img src="img/classes/${this.classVarName(id)}.jpg" alt="${classes[id]}">${classes[id]}</button>`)
       .join('');
 
     classList.querySelectorAll('.option-btn').forEach(btn => {
