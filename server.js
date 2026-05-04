@@ -13,6 +13,26 @@ const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
 
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' https://js.puter.com https://cdn.jsdelivr.net 'unsafe-inline'; " +
+    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: https:; " +
+    "connect-src 'self' https://api.puter.com wss:; " +
+    "media-src 'self'; " +
+    "frame-src https://puter.com;"
+  );
+  next();
+});
+
 // Serve the frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
