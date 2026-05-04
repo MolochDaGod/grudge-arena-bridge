@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grudge Arena — Vanilla WoW PvP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=IM+Fell+English+SC&family=Spectral+SC:wght@300;400;600;700&family=MedievalSharp&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- INTRO OVERLAY — video + splash transition      -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="introOverlay" class="intro-overlay">
+    <video id="introVideo" class="intro-video" muted playsinline>
+      <source src="intro.mp4" type="video/mp4">
+    </video>
+    <img id="splashImg" src="splash.png" alt="Grudge Studio" class="splash-img hidden">
+  </div>
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- HEADER                                         -->
+  <!-- ══════════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <img src="favicon.png" alt="Grudge" class="logo-img">
+        <h1 class="logo-text">Grudge Arena</h1>
+      </div>
+      <nav class="nav-links" id="mainNav">
+        <a href="#" data-view="home" class="nav-link active">Home</a>
+        <a href="#" data-view="character" class="nav-link hidden">Character</a>
+        <a href="#" data-view="queue" class="nav-link hidden">Queue</a>
+        <a href="#" data-view="records" class="nav-link hidden">Records</a>
+      </nav>
+      <div class="header-status">
+        <span class="server-status" id="serverStatus">
+          <span class="status-dot offline"></span>
+          Checking...
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- VIEWS                                          -->
+  <!-- ══════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- HOME / LOGIN -->
+    <section id="view-home" class="view active">
+      <div class="hero-section">
+        <div class="hero-ornament top-left">◆</div>
+        <div class="hero-ornament top-right">◆</div>
+        <div class="hero-ornament bottom-left">◆</div>
+        <div class="hero-ornament bottom-right">◆</div>
+
+        <h2 class="hero-title">Vanilla WoW Arena</h2>
+        <p class="hero-subtitle">Patch 1.7 — Rise of the Blood God</p>
+        <p class="hero-desc">Create a level 60 premade, queue Warsong Gulch, and fight. No download required.</p>
+
+        <div class="login-box fantasy-panel">
+          <h3 class="section-title">Enter the Arena</h3>
+          <p class="login-info">Connect with your Grudge ID to create or access your MaNGOS account.</p>
+          <div class="input-group">
+            <label for="grudgeIdInput">Grudge ID</label>
+            <input type="text" id="grudgeIdInput" placeholder="Enter your Grudge ID..." class="fantasy-input">
+          </div>
+          <button id="loginBtn" class="gilded-button full-width">
+            <span class="btn-icon">⚔</span> Enter Arena
+          </button>
+          <div id="loginError" class="error-msg hidden"></div>
+        </div>
+
+        <div class="feature-cards">
+          <div class="feature-card stone-panel">
+            <div class="feature-icon">🗡️</div>
+            <h4>Instant 60</h4>
+            <p>Premade characters with spec & gear templates</p>
+          </div>
+          <div class="feature-card stone-panel">
+            <div class="feature-icon">🏟️</div>
+            <h4>WSG Battles</h4>
+            <p>2v2, 3v3, and 5v5 with intelligent battlebots</p>
+          </div>
+          <div class="feature-card stone-panel">
+            <div class="feature-icon">🌐</div>
+            <h4>Play in Browser</h4>
+            <p>Stream WoW directly — zero install</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARACTER CREATION -->
+    <section id="view-character" class="view">
+      <div class="view-header">
+        <h2 class="section-title">Character Creation</h2>
+        <p class="section-desc">Create a level 60 premade with talents and gear.</p>
+      </div>
+
+      <!-- Existing Characters -->
+      <div id="existingChars" class="existing-chars hidden">
+        <h3 class="subsection-title">Your Characters</h3>
+        <div id="charList" class="char-grid"></div>
+        <div class="divider-ornate"><span>◆ Create New ◆</span></div>
+      </div>
+
+      <!-- Step 1: Faction -->
+      <div class="creation-step" id="step-faction">
+        <h3 class="step-title">Choose Your Faction</h3>
+        <div class="faction-pick">
+          <button class="faction-btn alliance" data-faction="Alliance">
+            <div class="faction-crest">🛡️</div>
+            <span class="faction-name">Alliance</span>
+          </button>
+          <div class="faction-vs">VS</div>
+          <button class="faction-btn horde" data-faction="Horde">
+            <div class="faction-crest">🪓</div>
+            <span class="faction-name">Horde</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Race & Class -->
+      <div class="creation-step hidden" id="step-raceclass">
+        <h3 class="step-title">Race & Class</h3>
+        <div class="rc-grid">
+          <div class="rc-col">
+            <h4 class="rc-label">Race</h4>
+            <div id="raceList" class="option-list"></div>
+          </div>
+          <div class="rc-col">
+            <h4 class="rc-label">Class</h4>
+            <div id="classList" class="option-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Spec & Gear -->
+      <div class="creation-step hidden" id="step-specgear">
+        <h3 class="step-title">Spec & Gear</h3>
+        <div class="rc-grid">
+          <div class="rc-col">
+            <h4 class="rc-label">Talent Spec</h4>
+            <div id="specList" class="option-list"></div>
+          </div>
+          <div class="rc-col">
+            <h4 class="rc-label">Gear Set</h4>
+            <div id="gearList" class="option-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Name & Create -->
+      <div class="creation-step hidden" id="step-name">
+        <h3 class="step-title">Name Your Champion</h3>
+        <div class="name-form fantasy-panel">
+          <div id="charSummary" class="char-summary"></div>
+          <div class="input-group">
+            <label for="charNameInput">Character Name</label>
+            <input type="text" id="charNameInput" placeholder="Enter name..." class="fantasy-input" maxlength="12">
+          </div>
+          <button id="createCharBtn" class="gilded-button full-width">
+            <span class="btn-icon">✦</span> Create Character
+          </button>
+          <div id="createError" class="error-msg hidden"></div>
+        </div>
+      </div>
+
+      <div id="createSuccess" class="success-panel hidden">
+        <h3>Character Created!</h3>
+        <div id="createdCharInfo"></div>
+        <button class="gilded-button" onclick="App.showView('queue')">
+          <span class="btn-icon">🏟️</span> Queue for Battle
+        </button>
+      </div>
+    </section>
+
+    <!-- QUEUE -->
+    <section id="view-queue" class="view">
+      <div class="view-header">
+        <h2 class="section-title">Warsong Gulch</h2>
+        <p class="section-desc">Queue for a battleground. Bots will fill empty slots.</p>
+      </div>
+
+      <div class="queue-modes">
+        <button class="mode-btn dark-button" data-mode="2v2">
+          <span class="mode-size">2v2</span>
+          <span class="mode-desc">Quick Skirmish</span>
+        </button>
+        <button class="mode-btn dark-button" data-mode="3v3">
+          <span class="mode-size">3v3</span>
+          <span class="mode-desc">Team Fight</span>
+        </button>
+        <button class="mode-btn dark-button" data-mode="5v5">
+          <span class="mode-size">5v5</span>
+          <span class="mode-desc">Full Battle</span>
+        </button>
+      </div>
+
+      <div id="queueStatus" class="queue-status-panel hidden">
+        <div class="queue-spinner"></div>
+        <h3 id="queueMsg">Finding match...</h3>
+        <p id="queueDetail"></p>
+      </div>
+
+      <div id="matchReady" class="match-ready hidden">
+        <div class="match-ready-inner fantasy-panel">
+          <h3 class="gold-text">Match Ready!</h3>
+          <div id="matchInfo"></div>
+          <button id="playBtn" class="gilded-button full-width">
+            <span class="btn-icon">▶</span> Launch Game Session
+          </button>
+          <div id="playInstructions" class="play-instructions hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECORDS -->
+    <section id="view-records" class="view">
+      <div class="view-header">
+        <h2 class="section-title">Arena Records</h2>
+        <p class="section-desc">Your win/loss history across all modes.</p>
+      </div>
+      <div id="recordsContent" class="records-grid"></div>
+      <div id="noRecords" class="empty-state hidden">
+        <p>No matches played yet. Queue up and fight!</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- FOOTER                                         -->
+  <!-- ══════════════════════════════════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <span class="footer-brand">Grudge Studio</span>
+      <span class="footer-sep">◆</span>
+      <span class="footer-patch">Patch 1.7 — Rise of the Blood God</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

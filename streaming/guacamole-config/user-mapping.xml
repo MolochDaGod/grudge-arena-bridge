@@ -1,0 +1,58 @@
+<!--
+  Guacamole User Mapping for Grudge Arena
+  
+  This maps web users to RDP connections on the Windows host
+  where the WoW client runs.
+  
+  For production: replace with dynamic auth via the bridge API.
+  For now: single shared connection for testing.
+-->
+<user-mapping>
+
+    <!-- Arena player connection -->
+    <authorize username="arena" password="arena">
+
+        <!-- RDP to the Windows host running WoW -->
+        <connection name="Grudge Arena - WoW">
+            <protocol>rdp</protocol>
+            
+            <!-- Host machine running WoW client -->
+            <!-- For local testing: use your machine's LAN IP -->
+            <!-- For VPS: use the VPS internal IP -->
+            <param name="hostname">host.docker.internal</param>
+            <param name="port">3389</param>
+            
+            <!-- Windows credentials on the host -->
+            <param name="username">arena</param>
+            <param name="password">arena</param>
+            <param name="domain"></param>
+            
+            <!-- Display settings optimized for WoW -->
+            <param name="width">1280</param>
+            <param name="height">720</param>
+            <param name="color-depth">24</param>
+            <param name="resize-method">display-update</param>
+            
+            <!-- Audio streaming (hear WoW sounds in browser) -->
+            <param name="enable-audio-input">false</param>
+            <param name="disable-audio">false</param>
+            
+            <!-- Performance tuning for game streaming -->
+            <param name="enable-wallpaper">false</param>
+            <param name="enable-theming">false</param>
+            <param name="enable-font-smoothing">false</param>
+            <param name="enable-full-window-drag">false</param>
+            <param name="enable-desktop-composition">false</param>
+            <param name="enable-menu-animations">false</param>
+            
+            <!-- Security -->
+            <param name="security">any</param>
+            <param name="ignore-cert">true</param>
+            
+            <!-- Auto-launch WoW on connect -->
+            <param name="initial-program">C:\WoW\WoW.exe</param>
+        </connection>
+
+    </authorize>
+
+</user-mapping>

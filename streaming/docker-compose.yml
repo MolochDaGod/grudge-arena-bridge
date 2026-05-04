@@ -1,0 +1,43 @@
+# Grudge Arena - Game Streaming via Apache Guacamole
+# Streams the WoW 1.7.1 client to a web browser over HTML5
+#
+# Architecture:
+#   Browser <--HTML5/WebSocket--> guacamole <--guacamole protocol--> guacd <--RDP/VNC--> WoW Client
+#
+# Usage:
+#   docker-compose up -d
+#   Open http://localhost:8080/guacamole in browser
+
+version: '3.8'
+
+services:
+  # Guacamole daemon - handles the actual RDP/VNC connections
+  guacd:
+    image: guacamole/guacd:1.5.4
+    container_name: arena-guacd
+    restart: unless-stopped
+    networks:
+      - arena-net
+
+  # Guacamole web app - HTML5 frontend + API
+  guacamole:
+    image: guacamole/guacamole:1.5.4
+    container_name: arena-guacamole
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACD_PORT: 4822
+      # Use basic auth with user-mapping.xml instead of database
+      GUACAMOLE_HOME: /etc/guacamole
+    volumes:
+      - ./guacamole-config:/etc/guacamole
+    depends_on:
+      - guacd
+    networks:
+      - arena-net
+
+networks:
+  arena-net:
+    driver: bridge
