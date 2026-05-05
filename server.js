@@ -224,11 +224,14 @@ app.post('/api/admin/cleanup', async (req, res) => {
 // ──────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   try {
-    const [rows] = await db.realmd().query('SELECT 1');
+    const dbOk = await Promise.race([
+      db.realmd().query('SELECT 1').then(() => true),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 5000)),
+    ]);
     const soapOk = await soap.raw('server info').then(() => true).catch(() => false);
     res.json({
       status: 'ok',
-      database: true,
+      database: dbOk,
       soap: soapOk,
       timestamp: new Date().toISOString(),
     });
