@@ -179,6 +179,11 @@ const App = {
       this.characters = data.characters || [];
       this.puterUuid = puterUser.uuid;
 
+      // Show username in header
+      const userDisplay = document.getElementById('userDisplay');
+      userDisplay.textContent = puterUser.username;
+      userDisplay.classList.remove('hidden');
+
       // Show nav and go to character view
       statusEl.classList.add('hidden');
       this.showAuthNav();
@@ -191,7 +196,7 @@ const App = {
       this.showError(errorEl, e.message);
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '<img src="favicon.png" alt="" class="btn-logo"> Sign In with Grudge';
+      btn.innerHTML = '<img src="logo.png" alt="" class="btn-logo"> Sign In with Grudge';
     }
   },
 
