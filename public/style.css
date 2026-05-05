@@ -1055,9 +1055,18 @@ a:hover { color: var(--gold-light); }
 /* ── Loading Session ────────────────────────── */
 .loading-session {
   text-align: center;
-  padding: 4rem 1rem;
-  max-width: 500px;
+  padding: 2rem 1rem;
+  max-width: 600px;
   margin: 0 auto;
+}
+
+.loading-video {
+  width: 100%;
+  max-width: 500px;
+  border-radius: var(--radius);
+  border: 2px solid var(--gold-border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  margin-bottom: 1.5rem;
 }
 
 .loading-steps {

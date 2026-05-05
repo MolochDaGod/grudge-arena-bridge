@@ -190,9 +190,13 @@ const App = {
       statusEl.classList.add('hidden');
       this.showAuthNav();
 
-      // Go to loading screen → prepare game session
+      // Go to loading screen → play video + prepare game session
       this.showView('loading');
+      const loadVid = document.getElementById('loadingVideo');
+      if (loadVid) loadVid.play().catch(() => {});
       await this.prepareSession();
+      // Stop video when done
+      if (loadVid) { loadVid.pause(); loadVid.currentTime = 0; }
 
     } catch (e) {
       statusEl.classList.add('hidden');

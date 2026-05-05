@@ -105,7 +105,9 @@
     <!-- LOADING / SESSION PREP -->
     <section id="view-loading" class="view">
       <div class="loading-session">
-        <div class="queue-spinner"></div>
+        <video id="loadingVideo" class="loading-video" muted loop playsinline>
+          <source src="loading.mp4" type="video/mp4">
+        </video>
         <h2 class="section-title" id="loadingTitle">Preparing Your Session</h2>
         <p class="section-desc" id="loadingMsg">Setting up your game client...</p>
         <div id="loadingSteps" class="loading-steps">
