@@ -181,6 +181,12 @@ app.post('/api/play/session', async (req, res) => {
     });
   } catch (e) {
     console.error('Play session error:', e);
+    if (e.code === 'ECONNREFUSED' || e.message.includes('timed out') || e.message.includes('ECONNREFUSED')) {
+      return res.status(503).json({
+        error: 'Game streaming is starting up — try again in a few minutes.',
+        detail: 'Guacamole service is not available yet.',
+      });
+    }
     res.status(500).json({ error: e.message });
   }
 });

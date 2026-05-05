@@ -6,11 +6,26 @@
 #
 # Usage:
 #   docker-compose up -d
-#   Open http://localhost:8080/guacamole in browser
 
 version: '3.8'
 
 services:
+  # MySQL for Guacamole auth & dynamic connections
+  guac-db:
+    image: mysql:8.0
+    container_name: arena-guac-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: guac_root_pw
+      MYSQL_DATABASE: guacamole_db
+      MYSQL_USER: guacamole_user
+      MYSQL_PASSWORD: guac_db_pw
+    volumes:
+      - guac-dbdata:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d
+    networks:
+      - arena-net
+
   # Guacamole daemon - handles the actual RDP/VNC connections
   guacd:
     image: guacamole/guacd:1.5.4
@@ -19,7 +34,7 @@ services:
     networks:
       - arena-net
 
-  # Guacamole web app - HTML5 frontend + API
+  # Guacamole web app - HTML5 frontend + REST API
   guacamole:
     image: guacamole/guacamole:1.5.4
     container_name: arena-guacamole
@@ -29,14 +44,19 @@ services:
     environment:
       GUACD_HOSTNAME: guacd
       GUACD_PORT: 4822
-      # Use basic auth with user-mapping.xml instead of database
-      GUACAMOLE_HOME: /etc/guacamole
-    volumes:
-      - ./guacamole-config:/etc/guacamole
+      MYSQL_HOSTNAME: guac-db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: guacamole_db
+      MYSQL_USER: guacamole_user
+      MYSQL_PASSWORD: guac_db_pw
     depends_on:
       - guacd
+      - guac-db
     networks:
       - arena-net
+
+volumes:
+  guac-dbdata:
 
 networks:
   arena-net:
