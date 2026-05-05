@@ -30,7 +30,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' https://js.puter.com https://cdn.jsdelivr.net 'unsafe-inline'; " +
+    "script-src 'self' https://js.puter.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com 'unsafe-inline'; " +
     "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: https:; " +
