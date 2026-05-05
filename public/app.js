@@ -25,10 +25,8 @@ const App = {
     this.playIntro();
     this.bindNav();
     this.bindLogin();
-    this.bindFaction();
-    this.bindQueue();
     this.bindPlay();
-    this.bindCreate();
+    this.bindAdmin();
     this.checkHealth();
   },
 
@@ -108,7 +106,11 @@ const App = {
   },
 
   showAuthNav() {
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('hidden'));
+    document.querySelectorAll('.nav-link:not(#adminNavLink)').forEach(l => l.classList.remove('hidden'));
+    // Show admin link only for admin accounts (accountId 1 = ADMIN)
+    if (this.accountId === 1) {
+      document.getElementById('adminNavLink').classList.remove('hidden');
+    }
   },
 
   // ── Health Check ──────────────────────────────
@@ -184,12 +186,13 @@ const App = {
       userDisplay.textContent = puterUser.username;
       userDisplay.classList.remove('hidden');
 
-      // Show nav and go to character view
+      // Show nav (except admin unless admin user)
       statusEl.classList.add('hidden');
       this.showAuthNav();
-      await this.loadCharOptions();
-      this.showView('character');
-      this.renderExistingChars();
+
+      // Go to loading screen → prepare game session
+      this.showView('loading');
+      await this.prepareSession();
 
     } catch (e) {
       statusEl.classList.add('hidden');
@@ -198,6 +201,126 @@ const App = {
       btn.disabled = false;
       btn.innerHTML = '<img src="logo.png" alt="" class="btn-logo"> Sign In with Grudge';
     }
+  },
+
+  // ── Session Preparation ────────────────────────
+  async prepareSession() {
+    const setStep = (id, state, text) => {
+      const el = document.getElementById(id);
+      el.className = 'loading-step ' + state;
+      if (text) el.textContent = text;
+    };
+
+    try {
+      // Step 1: Auth done
+      setStep('lstep-auth', 'done', '✦ Authenticated');
+
+      // Step 2: Account
+      setStep('lstep-account', 'active', '◆ Game account ready...');
+      await new Promise(r => setTimeout(r, 500));
+      setStep('lstep-account', 'done', '✦ Game account ready');
+
+      // Step 3: Game session
+      setStep('lstep-session', 'active', '◆ Launching game session...');
+      const res = await fetch(`${API}/play/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId: this.accountId, username: this.username }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        // Guacamole not ready — go to characters view instead
+        setStep('lstep-session', 'error', '✕ ' + (err.error || 'Streaming unavailable'));
+        setStep('lstep-connect', 'error', '✕ Skipped');
+        document.getElementById('loadingMsg').textContent = 'Game streaming is not available yet. Browse your profile below.';
+        await new Promise(r => setTimeout(r, 2000));
+        await this.loadCharOptions();
+        this.loadCharacterProfile();
+        this.showView('characters');
+        return;
+      }
+
+      const session = await res.json();
+      setStep('lstep-session', 'done', '✦ Game session ready');
+
+      // Step 4: Connect
+      setStep('lstep-connect', 'active', '◆ Connecting to server...');
+      await new Promise(r => setTimeout(r, 500));
+      setStep('lstep-connect', 'done', '✦ Connected!');
+
+      // Transition to game view
+      await new Promise(r => setTimeout(r, 800));
+      this.showView('game');
+      document.getElementById('gameCharName').textContent = this.username;
+      document.getElementById('gameStatus').textContent = 'Connecting...';
+      document.getElementById('gameLoading').classList.remove('hidden');
+      this.connectGuacamole(session.wsUrl);
+
+    } catch (e) {
+      document.getElementById('loadingError').textContent = e.message;
+      document.getElementById('loadingError').classList.remove('hidden');
+    }
+  },
+
+  // ── Character Profile (read-only) ──────────────
+  async loadCharacterProfile() {
+    await this.loadCharOptions();
+    const list = document.getElementById('charList');
+    const noChars = document.getElementById('noChars');
+    const races = this.charOptions?.races || {};
+    const classes = this.charOptions?.classes || {};
+
+    if (!this.characters.length) {
+      list.innerHTML = '';
+      noChars.classList.remove('hidden');
+      return;
+    }
+
+    noChars.classList.add('hidden');
+    list.innerHTML = this.characters.map(c => `
+      <div class="char-card stone-panel">
+        <div class="char-name gold-text">${this.escapeHtml(c.name)}</div>
+        <div class="char-info">${races[c.race] || 'Unknown'} ${classes[c.class] || 'Unknown'}</div>
+        <div class="char-level">Level ${c.level}</div>
+      </div>
+    `).join('');
+  },
+
+  // ── Admin Panel ────────────────────────────────
+  bindAdmin() {
+    const soapBtn = document.getElementById('soapBtn');
+    const refreshBtn = document.getElementById('refreshStatsBtn');
+    const lookupBtn = document.getElementById('lookupBtn');
+
+    if (soapBtn) soapBtn.addEventListener('click', async () => {
+      const cmd = document.getElementById('soapCommand').value;
+      const result = document.getElementById('soapResult');
+      try {
+        const res = await fetch(`${API}/admin/soap`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: cmd }),
+        });
+        const data = await res.json();
+        result.textContent = JSON.stringify(data, null, 2);
+      } catch (e) { result.textContent = e.message; }
+    });
+
+    if (refreshBtn) refreshBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${API}/play/stats`);
+        document.getElementById('sessionStats').textContent = JSON.stringify(await res.json(), null, 2);
+      } catch (e) { document.getElementById('sessionStats').textContent = e.message; }
+    });
+
+    if (lookupBtn) lookupBtn.addEventListener('click', async () => {
+      const id = document.getElementById('lookupId').value;
+      try {
+        const res = await fetch(`${API}/record/${id}`);
+        document.getElementById('lookupResult').textContent = JSON.stringify(await res.json(), null, 2);
+      } catch (e) { document.getElementById('lookupResult').textContent = e.message; }
+    });
   },
 
   // ── Character Options ─────────────────────────
@@ -537,7 +660,6 @@ const App = {
   guacClient: null,
 
   bindPlay() {
-    document.getElementById('playBtn').addEventListener('click', () => this.launchSession());
     document.getElementById('gameFullscreenBtn').addEventListener('click', () => this.toggleFullscreen());
     document.getElementById('gameDisconnectBtn').addEventListener('click', () => this.disconnectGame());
   },
@@ -667,7 +789,7 @@ const App = {
       body: JSON.stringify({ accountId: this.accountId }),
     }).catch(() => {});
 
-    this.showView('queue');
+    this.showView('characters');
   },
 
   // ── Records ───────────────────────────────────

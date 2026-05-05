@@ -40,10 +40,10 @@
       </div>
       <nav class="nav-links" id="mainNav">
         <a href="#" data-view="home" class="nav-link active">Home</a>
-        <a href="#" data-view="character" class="nav-link hidden">Character</a>
-        <a href="#" data-view="queue" class="nav-link hidden">Queue</a>
+        <a href="#" data-view="characters" class="nav-link hidden">Characters</a>
         <a href="#" data-view="records" class="nav-link hidden">Records</a>
         <a href="#" data-view="game" class="nav-link hidden">Game</a>
+        <a href="#" data-view="admin" class="nav-link hidden" id="adminNavLink">Admin</a>
       </nav>
       <div class="header-status">
         <span id="userDisplay" class="user-display hidden"></span>
@@ -70,7 +70,7 @@
 
         <h2 class="hero-title">Vanilla WoW Arena</h2>
         <p class="hero-subtitle">Patch 1.7 — Rise of the Blood God</p>
-        <p class="hero-desc">Create a level 60 premade, queue Warsong Gulch, and fight. No download required.</p>
+        <p class="hero-desc">Play Vanilla WoW directly in your browser — zero install required.</p>
 
         <div class="login-box fantasy-panel">
           <h3 class="section-title">Enter the Arena</h3>
@@ -85,145 +85,48 @@
         <div class="feature-cards">
           <div class="feature-card stone-panel">
             <div class="feature-icon">🗡️</div>
-            <h4>Instant 60</h4>
-            <p>Premade characters with spec & gear templates</p>
-          </div>
-          <div class="feature-card stone-panel">
-            <div class="feature-icon">🏟️</div>
-            <h4>WSG Battles</h4>
-            <p>2v2, 3v3, and 5v5 with intelligent battlebots</p>
+            <h4>Vanilla PvP</h4>
+            <p>Patch 1.7 — authentic combat, all classes</p>
           </div>
           <div class="feature-card stone-panel">
             <div class="feature-icon">🌐</div>
             <h4>Play in Browser</h4>
             <p>Stream WoW directly — zero install</p>
           </div>
+          <div class="feature-card stone-panel">
+            <div class="feature-icon">⚔️</div>
+            <h4>Arena Ready</h4>
+            <p>Sign in and you're in the game</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- CHARACTER CREATION -->
-    <section id="view-character" class="view">
-      <div class="view-header">
-        <h2 class="section-title">Character Creation</h2>
-        <p class="section-desc">Create a level 60 premade with talents and gear.</p>
-      </div>
-
-      <!-- Existing Characters -->
-      <div id="existingChars" class="existing-chars hidden">
-        <h3 class="subsection-title">Your Characters</h3>
-        <div id="charList" class="char-grid"></div>
-        <div class="divider-ornate"><span>◆ Create New ◆</span></div>
-      </div>
-
-      <!-- Step 1: Faction -->
-      <div class="creation-step" id="step-faction">
-        <h3 class="step-title">Choose Your Faction</h3>
-        <div class="faction-pick">
-          <button class="faction-btn alliance" data-faction="Alliance">
-            <img src="img/factions/alliance.jpg" alt="Alliance" class="faction-crest-img">
-            <span class="faction-name">Alliance</span>
-          </button>
-          <div class="faction-vs">VS</div>
-          <button class="faction-btn horde" data-faction="Horde">
-            <img src="img/factions/horde.jpg" alt="Horde" class="faction-crest-img">
-            <span class="faction-name">Horde</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Step 2: Race & Class -->
-      <div class="creation-step hidden" id="step-raceclass">
-        <h3 class="step-title">Race & Class</h3>
-        <div class="rc-grid">
-          <div class="rc-col">
-            <h4 class="rc-label">Race</h4>
-            <div id="raceList" class="option-list"></div>
-          </div>
-          <div class="rc-col">
-            <h4 class="rc-label">Class</h4>
-            <div id="classList" class="option-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Spec & Gear -->
-      <div class="creation-step hidden" id="step-specgear">
-        <h3 class="step-title">Spec & Gear</h3>
-        <div class="rc-grid">
-          <div class="rc-col">
-            <h4 class="rc-label">Talent Spec</h4>
-            <div id="specList" class="option-list"></div>
-          </div>
-          <div class="rc-col">
-            <h4 class="rc-label">Gear Set</h4>
-            <div id="gearList" class="option-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 4: Name & Create -->
-      <div class="creation-step hidden" id="step-name">
-        <h3 class="step-title">Name Your Champion</h3>
-        <div class="name-form fantasy-panel">
-          <div id="charSummary" class="char-summary"></div>
-          <div class="input-group">
-            <label for="charNameInput">Character Name</label>
-            <input type="text" id="charNameInput" placeholder="Enter name..." class="fantasy-input" maxlength="12">
-          </div>
-          <button id="createCharBtn" class="gilded-button full-width">
-            <span class="btn-icon">✦</span> Create Character
-          </button>
-          <div id="createError" class="error-msg hidden"></div>
-        </div>
-      </div>
-
-      <div id="createSuccess" class="success-panel hidden">
-        <h3>Character Created!</h3>
-        <div id="createdCharInfo"></div>
-        <button class="gilded-button" onclick="App.showView('queue')">
-          <span class="btn-icon">🏟️</span> Queue for Battle
-        </button>
-      </div>
-    </section>
-
-    <!-- QUEUE -->
-    <section id="view-queue" class="view">
-      <div class="view-header">
-        <h2 class="section-title">Warsong Gulch</h2>
-        <p class="section-desc">Queue for a battleground. Bots will fill empty slots.</p>
-      </div>
-
-      <div class="queue-modes">
-        <button class="mode-btn dark-button" data-mode="2v2">
-          <span class="mode-size">2v2</span>
-          <span class="mode-desc">Quick Skirmish</span>
-        </button>
-        <button class="mode-btn dark-button" data-mode="3v3">
-          <span class="mode-size">3v3</span>
-          <span class="mode-desc">Team Fight</span>
-        </button>
-        <button class="mode-btn dark-button" data-mode="5v5">
-          <span class="mode-size">5v5</span>
-          <span class="mode-desc">Full Battle</span>
-        </button>
-      </div>
-
-      <div id="queueStatus" class="queue-status-panel hidden">
+    <!-- LOADING / SESSION PREP -->
+    <section id="view-loading" class="view">
+      <div class="loading-session">
         <div class="queue-spinner"></div>
-        <h3 id="queueMsg">Finding match...</h3>
-        <p id="queueDetail"></p>
-      </div>
-
-      <div id="matchReady" class="match-ready hidden">
-        <div class="match-ready-inner fantasy-panel">
-          <h3 class="gold-text">Match Ready!</h3>
-          <div id="matchInfo"></div>
-          <button id="playBtn" class="gilded-button full-width">
-            <span class="btn-icon">▶</span> Launch Game Session
-          </button>
-          <div id="playInstructions" class="play-instructions hidden"></div>
+        <h2 class="section-title" id="loadingTitle">Preparing Your Session</h2>
+        <p class="section-desc" id="loadingMsg">Setting up your game client...</p>
+        <div id="loadingSteps" class="loading-steps">
+          <div class="loading-step active" id="lstep-auth">✦ Authenticated</div>
+          <div class="loading-step" id="lstep-account">◇ Creating game account...</div>
+          <div class="loading-step" id="lstep-session">◇ Launching game session...</div>
+          <div class="loading-step" id="lstep-connect">◇ Connecting to server...</div>
         </div>
+        <div id="loadingError" class="error-msg hidden"></div>
+      </div>
+    </section>
+
+    <!-- CHARACTERS (read-only profile) -->
+    <section id="view-characters" class="view">
+      <div class="view-header">
+        <h2 class="section-title">Your Characters</h2>
+        <p class="section-desc">Characters on your arena account.</p>
+      </div>
+      <div id="charList" class="char-grid"></div>
+      <div id="noChars" class="empty-state">
+        <p>No characters yet — create one in-game after connecting.</p>
       </div>
     </section>
 
@@ -255,6 +158,45 @@
         <div id="gameLoading" class="game-loading">
           <div class="queue-spinner"></div>
           <p>Launching WoW client...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN (hidden unless admin user) -->
+    <section id="view-admin" class="view">
+      <div class="view-header">
+        <h2 class="section-title">Server Admin</h2>
+        <p class="section-desc">MaNGOS server management tools.</p>
+      </div>
+
+      <div class="admin-grid">
+        <!-- SOAP Console -->
+        <div class="admin-panel fantasy-panel">
+          <h3 class="subsection-title">SOAP Console</h3>
+          <div class="input-group">
+            <label for="soapCommand">GM Command</label>
+            <input type="text" id="soapCommand" placeholder="server info" class="fantasy-input">
+          </div>
+          <button id="soapBtn" class="gilded-button full-width">Execute</button>
+          <pre id="soapResult" class="admin-result"></pre>
+        </div>
+
+        <!-- Server Stats -->
+        <div class="admin-panel fantasy-panel">
+          <h3 class="subsection-title">Session Stats</h3>
+          <pre id="sessionStats" class="admin-result">Loading...</pre>
+          <button id="refreshStatsBtn" class="dark-button full-width" style="margin-top:0.5rem;">Refresh</button>
+        </div>
+
+        <!-- Account Lookup -->
+        <div class="admin-panel fantasy-panel">
+          <h3 class="subsection-title">Account Lookup</h3>
+          <div class="input-group">
+            <label for="lookupId">Account ID</label>
+            <input type="text" id="lookupId" placeholder="1" class="fantasy-input">
+          </div>
+          <button id="lookupBtn" class="gilded-button full-width">Lookup</button>
+          <pre id="lookupResult" class="admin-result"></pre>
         </div>
       </div>
     </section>

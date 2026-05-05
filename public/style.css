@@ -1052,6 +1052,74 @@ a:hover { color: var(--gold-light); }
 
 .footer-sep { color: var(--gold-dark); }
 
+/* ── Loading Session ────────────────────────── */
+.loading-session {
+  text-align: center;
+  padding: 4rem 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.loading-steps {
+  margin-top: 2rem;
+  text-align: left;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.loading-step {
+  padding: 0.5rem 0;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  opacity: 0.5;
+  transition: all 0.3s;
+}
+
+.loading-step.active {
+  color: var(--gold);
+  opacity: 1;
+}
+
+.loading-step.done {
+  color: hsl(142 70% 55%);
+  opacity: 1;
+}
+
+.loading-step.error {
+  color: hsl(0 70% 55%);
+  opacity: 1;
+}
+
+/* ── Admin ──────────────────────────────────── */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.admin-panel {
+  padding: 1.5rem;
+}
+
+.admin-result {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: hsl(225 28% 8%);
+  border: 1px solid var(--stone);
+  border-radius: var(--radius);
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ── Game Canvas ────────────────────────────── */
 .game-header {
   display: flex;
