@@ -248,7 +248,7 @@ app.get('/api/health', async (req, res) => {
 
 // ──────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Grudge Arena Bridge running on port ${PORT}`);
   console.log(`  Auth:      POST /api/auth/login`);
   console.log(`  Character: POST /api/character/create`);
@@ -263,4 +263,24 @@ app.listen(PORT, () => {
       console.log(`Cleaned up ${result.cleaned} expired game session(s)`);
     }
   }, 5 * 60 * 1000);
+
+  // WebSocket proxy: forward /guacamole/* to local Guacamole
+  const WebSocket = require('ws');
+  const guacWsPort = process.env.GUAC_PORT || '8080';
+  server.on('upgrade', (req, socket, head) => {
+    if (!req.url.startsWith('/guacamole/')) return socket.destroy();
+    const target = `ws://localhost:${guacWsPort}${req.url}`;
+    const upstream = new WebSocket(target);
+    upstream.on('open', () => {
+      const ws = new WebSocket.Server({ noServer: true });
+      ws.handleUpgrade(req, socket, head, (client) => {
+        // Relay data both directions
+        client.on('message', (data) => { if (upstream.readyState === WebSocket.OPEN) upstream.send(data); });
+        upstream.on('message', (data) => { if (client.readyState === WebSocket.OPEN) client.send(data); });
+        client.on('close', () => upstream.close());
+        upstream.on('close', () => client.close());
+      });
+    });
+    upstream.on('error', () => socket.destroy());
+  });
 });

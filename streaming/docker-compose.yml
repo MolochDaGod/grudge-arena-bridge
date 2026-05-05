@@ -40,7 +40,7 @@ services:
     container_name: arena-guacamole
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8888:8080"
     environment:
       GUACD_HOSTNAME: guacd
       GUACD_PORT: 4822
