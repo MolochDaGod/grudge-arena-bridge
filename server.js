@@ -170,7 +170,7 @@ app.post('/api/play/session', async (req, res) => {
     if (!accountId) return res.status(400).json({ error: 'accountId required' });
 
     // Create or reuse a Guacamole RDP session for this player
-    const session = await guac.getOrCreateSession(accountId);
+    const session = await guac.getOrCreateSession(accountId, username, req.body.password);
 
     res.json({
       connectionId: session.connectionId,
