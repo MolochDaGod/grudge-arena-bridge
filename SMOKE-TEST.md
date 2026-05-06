@@ -1,104 +1,112 @@
-# Smoke Test Results — 2026-05-05
+# Smoke Test Results
 
-## Environment
+## Latest: 2026-05-06
+
+### Environment
 - **URL:** https://wow.grudge-studio.com
-- **VPS:** 74.208.174.62 (Windows Server 2022)
-- **Bridge:** Node.js on port 80, served via Cloudflare proxy
-- **MaNGOS:** Vanilla 1.7 (build 4695), MySQL root:root@localhost:3306
+- **VPS:** 74.208.155.229 (Windows Server 2022)
+- **Bridge:** Node.js on port 3001, served via Cloudflare Tunnel
+- **MaNGOS:** Vanilla 1.7 (build 4695), MySQL root:root@localhost:3307
 - **SOAP:** 127.0.0.1:7878 (admin gmlevel 3)
+- **VNC:** TightVNC on port 5900 → noVNC websocket at /vnc
 
-## Static Assets — 22/22 ✅
-All returning HTTP 200 through Cloudflare:
+### DNS — ✅ Verified
+```
+wow.grudge-studio.com → Cloudflare Proxy
+  172.67.132.73 / 104.21.4.170
+  CF-RAY headers present, Server: cloudflare
+```
+
+### Cloudflare Tunnel — ⚠️ Active but backend offline
+Tunnel is routing traffic (no 502/Bad Gateway), but bridge server on VPS is not running.
+All routes return `404 Not Found` with empty body via CF.
+
+### Static Assets — 0/10 ❌
+All returning 404 — bridge is the static file server and it's offline.
 
 | Asset | Status |
 |-------|--------|
-| `/` (index.html) | ✅ 200 |
-| `/style.css` | ✅ 200 |
-| `/app.js` | ✅ 200 |
-| `/favicon.png` (7KB) | ✅ 200 |
-| `/logo.png` (1024x1024) | ✅ 200 |
-| `/bg.png` | ✅ 200 |
-| `/splash.png` | ✅ 200 |
-| `/intro.mp4` | ✅ 200 |
-| `/privacy.html` | ✅ 200 |
-| `/robots.txt` | ✅ 200 |
-| `/img/races/*.jpg` (8 races) | ✅ 200 |
-| `/img/factions/*.jpg` (2 factions) | ✅ 200 |
+| `/` (index.html) | ❌ 404 |
+| `/style.css` | ❌ 404 |
+| `/app.js` | ❌ 404 |
+| `/favicon.png` | ❌ 404 |
+| `/logo.png` | ❌ 404 |
+| `/bg.png` | ❌ 404 |
+| `/splash.png` | ❌ 404 |
+| `/intro.mp4` | ❌ 404 |
+| `/privacy.html` | ❌ 404 |
+| `/robots.txt` | ❌ 404 |
 
-## API Endpoints
+### API Endpoints — 0/2 ❌
+| Endpoint | Status |
+|----------|--------|
+| `GET /api/health` | ❌ 404 |
+| `GET /api/character/options` | ❌ 404 |
 
-### Health — ✅
-```
-GET /api/health
-→ {"status":"ok","database":true,"soap":true}
-```
+### VPS Direct — ❌ Unreachable
+Ports not exposed externally (by design — all traffic via CF Tunnel).
 
-### Login (existing user) — ✅
-```
-POST /api/auth/login {"puterUuid":"smoke-test-001"}
-→ {"accountId":6,"username":"GA_SMOKETEST0","isNew":false,"characters":[]}
-```
+### VNC / Game Streaming — ❌ Cannot test
+Depends on bridge being up. VNC websocket proxy at `/vnc` is part of server.js.
 
-### Login (new user creation) — ✅
-```
-POST /api/auth/login {"puterUuid":"smoke-test-new-user-123"}
-→ {"accountId":7,"username":"GA_23570361","isNew":true,"password":"943a2b69..."}
-```
-- SOAP account creation with 500ms polling (up to 3s)
-- Email field tagged with `grudge:<puterUuid>` for lookup
-- Hash-based username: `GA_` + md5(puterUuid)[0:8]
+### System Status Summary
+| System | Status | Verified |
+|--------|--------|----------|
+| DNS (wow.grudge-studio.com) | ✅ CF Proxy | Yes |
+| Cloudflare Tunnel | ✅ Active | Yes |
+| Bridge API (Node.js :3001) | ❌ Not running | No |
+| Static frontend | ❌ Offline (served by bridge) | No |
+| MaNGOS (realmd + mangosd) | ❓ Unknown | No |
+| MySQL (bundled :3307) | ❓ Unknown | No |
+| SOAP (:7878) | ❓ Unknown | No |
+| TightVNC (:5900) | ❓ Unknown | No |
+| VNC WebSocket (/vnc) | ❌ Bridge offline | No |
+| Puter Auth | ❓ Frontend offline | No |
 
-### Re-login (idempotent) — ✅
-```
-POST /api/auth/login {"puterUuid":"smoke-test-new-user-123"}
-→ {"accountId":7,"isNew":false}
-```
-No duplicate account created.
+### Action Required
+1. SSH into VPS → start bridge: `node server.js` in the bridge directory
+2. Or run full deploy: `scripts\deploy-vps.ps1`
+3. Verify MaNGOS (MySQL, realmd, mangosd) running
+4. Verify TightVNC running on :5900
+5. Re-run smoke test
 
-### Character Options — ✅
-```
-GET /api/character/options
-→ 8 races, 9 classes, 40 valid combos
-```
+---
 
-### Play Session (Guacamole not running) — ✅ 503
-```
-POST /api/play/session
-→ {"error":"Game streaming is starting up — try again in a few minutes."}
-```
-Graceful degradation when Docker/Guacamole is unavailable.
+## Previous: 2026-05-05 (Last Known Good)
 
-## Frontend Features Verified
-- ✅ Intro video + splash screen transition
-- ✅ Header logo renders (logo.png)
-- ✅ Server status indicator (Online/Offline)
-- ✅ Puter username displays in header after login
-- ✅ Puter SDK auth popup flow
-- ✅ Character creation UI (faction → race → class → spec → name)
-- ✅ CSP allows Cloudflare analytics + Puter SDK
-- ✅ Race/class images load in character creator
+### Static Assets — 22/22 ✅
+All HTTP 200 through Cloudflare.
 
-## VPS Services
+### API Endpoints — All ✅
+- Health: `{"status":"ok","database":true,"soap":true}`
+- Login (existing): `{"accountId":6,"username":"GA_SMOKETEST0","isNew":false}`
+- Login (new): `{"accountId":7,"username":"GA_23570361","isNew":true}` — SOAP account creation working
+- Re-login: idempotent, no duplicate accounts
+- Character options: 8 races, 9 classes, 40 combos
+- Play session: 503 graceful (Guacamole not yet replaced with VNC)
+
+### Frontend — All ✅
+- Intro video + splash screen
+- Puter SDK auth popup
+- Character creation UI (faction → race → class → spec → name)
+- Server status indicator
+
+### VPS Services
 | Service | Port | Status |
 |---------|------|--------|
-| MySQL (bundled) | 3306 | ✅ Running |
-| realmd | 3724 | ✅ Running |
-| mangosd (4695) | 8085 + SOAP 7878 | ✅ Running |
-| Bridge (node) | 80 | ✅ Running (scheduled task: GrudgeBridge) |
-| Guacamole (Docker) | 8080 | ❌ Docker needs repair |
+| MySQL | 3306 | ✅ |
+| realmd | 3724 | ✅ |
+| mangosd | 8085 + SOAP 7878 | ✅ |
+| Bridge | 80 | ✅ |
+| Guacamole | 8080 | ❌ Docker broken |
 
-## Known Issues
-1. **Docker broken on VPS** — Docker Desktop hangs on commands. Guacamole streaming blocked until fixed.
-2. **WoW client not installed** — Need WoW 1.7.1 at `C:\WoW\` with realmlist→127.0.0.1 for streaming.
-3. **http.sys on port 80** — Stopped manually; may reclaim port 80 on reboot. Bridge scheduled task starts on boot but may need http.sys stopped first.
-
-## Fixes Applied This Session
-1. Favicon shrunk 1.2MB → 7KB (was causing Cloudflare 521 timeouts)
-2. SOAP timeout added (5s) to prevent health endpoint hanging
+### Fixes Applied That Session
+1. Favicon 1.2MB → 7KB (was causing CF 521 timeouts)
+2. SOAP timeout (5s)
 3. Health endpoint DB query timeout (5s race)
-4. CSP updated to allow `static.cloudflareinsights.com`
-5. ADMIN account gmlevel set to 3 for SOAP access
-6. Account creation polls DB after SOAP (500ms × 6 retries)
-7. Username generation switched to md5 hash for uniqueness
-8. SOAP "already exist" error handled gracefully
-9. Play endpoint returns 503 instead of 500 when Guacamole unavailable
+4. CSP for `static.cloudflareinsights.com`
+5. ADMIN gmlevel 3 for SOAP
+6. Account creation polls DB after SOAP (500ms × 6)
+7. md5 hash usernames for uniqueness
+8. SOAP "already exist" handled gracefully
+9. Play endpoint → 503 instead of 500 when streaming unavailable

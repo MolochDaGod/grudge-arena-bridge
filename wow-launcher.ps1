@@ -1,16 +1,27 @@
-# ═══════════════════════════════════════════════════
-# Grudge Arena — WoW Auto-Login Launcher
+# ==================================================
+# Grudge Arena - WoW Auto-Login Launcher
 # Called by Guacamole as the RDP initial-program
 # Launches WoW.exe and auto-fills login credentials
-# ═══════════════════════════════════════════════════
+# ==================================================
 
 param(
     [string]$Username = "",
-    [string]$Password = ""
+    [string]$Password = "",
+    [string]$WoWPath = ""
 )
 
-$LogFile = "C:\WoW\launcher.log"
-$WoWPath = "C:\WoW\WoW.exe"
+if (-not $WoWPath) {
+    $WoWPath = $env:WOW_PATH
+}
+if (-not $WoWPath) {
+    $WoWPath = "C:\WoW\WoW.exe"
+}
+
+$WoWDir = Split-Path -Parent $WoWPath
+if (-not $WoWDir) {
+    $WoWDir = "C:\WoW"
+}
+$LogFile = Join-Path $WoWDir "launcher.log"
 
 function Log($msg) {
     $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -29,12 +40,13 @@ if (-not (Test-Path $WoWPath)) {
 }
 
 # Step 2: Verify realmlist
-$realmlist = Get-Content "C:\WoW\realmlist.wtf" -ErrorAction SilentlyContinue
+$realmlistPath = Join-Path $WoWDir "realmlist.wtf"
+$realmlist = Get-Content $realmlistPath -ErrorAction SilentlyContinue
 Log "Realmlist: $realmlist"
 
 # Step 3: Launch WoW
 Log "Launching WoW.exe..."
-$wowProcess = Start-Process -FilePath $WoWPath -WorkingDirectory "C:\WoW" -PassThru
+$wowProcess = Start-Process -FilePath $WoWPath -WorkingDirectory $WoWDir -PassThru
 Log "WoW PID: $($wowProcess.Id)"
 
 # Step 4: Wait for WoW window to appear

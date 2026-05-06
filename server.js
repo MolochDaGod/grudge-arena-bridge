@@ -5,7 +5,7 @@ const character = require('./lib/character');
 const queue = require('./lib/queue');
 const soap = require('./lib/mangos-soap');
 const db = require('./lib/mangos-db');
-const guac = require('./lib/guacamole');
+const vnc = require('./lib/vnc-stream');
 
 const path = require('path');
 
@@ -162,30 +162,32 @@ app.get('/api/record/:accountId', async (req, res) => {
 });
 
 // ──────────────────────────────────────────────
-// PLAY — Launch Guacamole WoW session
+// PLAY — Launch VNC WoW session
 // ──────────────────────────────────────────────
 app.post('/api/play/session', async (req, res) => {
   try {
     const { accountId, username } = req.body;
     if (!accountId) return res.status(400).json({ error: 'accountId required' });
 
-    // Create or reuse a Guacamole RDP session for this player
-    const session = await guac.getOrCreateSession(accountId, username, req.body.password);
+    // Create or reuse a VNC session for this player
+    const session = await vnc.getOrCreateSession(accountId, username, req.body.password);
 
     res.json({
-      connectionId: session.connectionId,
-      guacToken: session.guacToken,
       wsUrl: session.wsUrl,
+      status: session.status,
       isNew: session.isNew,
       username: username || 'arena',
     });
   } catch (e) {
     console.error('Play session error:', e);
-    if (e.code === 'ECONNREFUSED' || e.message.includes('timed out') || e.message.includes('ECONNREFUSED')) {
+    if (e.message.includes('VNC server is not running')) {
       return res.status(503).json({
         error: 'Game streaming is starting up — try again in a few minutes.',
-        detail: 'Guacamole service is not available yet.',
+        detail: 'VNC server is not available yet. Start TightVNC.',
       });
+    }
+    if (e.message.includes('Another player')) {
+      return res.status(503).json({ error: e.message });
     }
     res.status(500).json({ error: e.message });
   }
@@ -195,7 +197,7 @@ app.post('/api/play/session', async (req, res) => {
 app.post('/api/play/disconnect', async (req, res) => {
   try {
     const { accountId } = req.body;
-    const result = await guac.destroySession(accountId);
+    const result = await vnc.destroySession(accountId);
     res.json({ disconnected: result });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -204,7 +206,7 @@ app.post('/api/play/disconnect', async (req, res) => {
 
 // Get game session stats
 app.get('/api/play/stats', async (req, res) => {
-  res.json(guac.getStats());
+  res.json(vnc.getStats());
 });
 
 // ──────────────────────────────────────────────
@@ -258,29 +260,54 @@ const server = app.listen(PORT, () => {
 
   // Cleanup expired game sessions every 5 minutes
   setInterval(async () => {
-    const result = await guac.cleanupExpiredSessions();
+    const result = await vnc.cleanupExpiredSessions();
     if (result.cleaned > 0) {
       console.log(`Cleaned up ${result.cleaned} expired game session(s)`);
     }
   }, 5 * 60 * 1000);
 
-  // WebSocket proxy: forward /guacamole/* to local Guacamole
+  // WebSocket proxy: forward /vnc to TightVNC via websockify
   const WebSocket = require('ws');
-  const guacWsPort = process.env.GUAC_PORT || '8080';
+  const net = require('net');
+  const vncHost = process.env.VNC_HOST || '127.0.0.1';
+  const vncPort = parseInt(process.env.VNC_PORT || '5900');
+
+  const vncWss = new WebSocket.Server({ noServer: true });
+
   server.on('upgrade', (req, socket, head) => {
-    if (!req.url.startsWith('/guacamole/')) return socket.destroy();
-    const target = `ws://localhost:${guacWsPort}${req.url}`;
-    const upstream = new WebSocket(target);
-    upstream.on('open', () => {
-      const ws = new WebSocket.Server({ noServer: true });
-      ws.handleUpgrade(req, socket, head, (client) => {
-        // Relay data both directions
-        client.on('message', (data) => { if (upstream.readyState === WebSocket.OPEN) upstream.send(data); });
-        upstream.on('message', (data) => { if (client.readyState === WebSocket.OPEN) client.send(data); });
-        client.on('close', () => upstream.close());
-        upstream.on('close', () => client.close());
+    if (req.url !== '/vnc') return socket.destroy();
+
+    vncWss.handleUpgrade(req, socket, head, (ws) => {
+      // Open TCP connection to TightVNC
+      const tcp = net.createConnection(vncPort, vncHost, () => {
+        console.log('[websockify] VNC TCP connected');
       });
+
+      // VNC server → browser (binary frames)
+      tcp.on('data', (data) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+      });
+
+      // Browser → VNC server
+      ws.on('message', (data) => {
+        if (!tcp.destroyed) {
+          tcp.write(Buffer.from(data));
+        }
+      });
+
+      tcp.on('end', () => ws.close());
+      tcp.on('error', (err) => {
+        console.error('[websockify] VNC TCP error:', err.message);
+        ws.close();
+      });
+
+      ws.on('close', () => {
+        tcp.destroy();
+        console.log('[websockify] Browser disconnected');
+      });
+      ws.on('error', () => tcp.destroy());
     });
-    upstream.on('error', () => socket.destroy());
   });
 });

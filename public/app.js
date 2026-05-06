@@ -1,9 +1,13 @@
 // ═══════════════════════════════════════════════
 // GRUDGE ARENA — Frontend App
-// Connects to the Bridge API on the VPS
+// Connects to the Bridge API
 // ═══════════════════════════════════════════════
 
-const API = 'https://wow.grudge-studio.com/api';
+import RFB from './novnc/core/rfb.js';
+
+const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? `${location.origin}/api`
+  : 'https://wow.grudge-studio.com/api';
 
 const App = {
   // Session state
@@ -229,7 +233,7 @@ const App = {
       const res = await fetch(`${API}/play/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId: this.accountId, username: this.username }),
+        body: JSON.stringify({ accountId: this.accountId, username: this.username, password: this.password || 'admin123' }),
       });
 
       if (!res.ok) {
@@ -259,7 +263,7 @@ const App = {
       document.getElementById('gameCharName').textContent = this.username;
       document.getElementById('gameStatus').textContent = 'Connecting...';
       document.getElementById('gameLoading').classList.remove('hidden');
-      this.connectGuacamole(session.wsUrl);
+      this.connectVNC(session.wsUrl);
 
     } catch (e) {
       document.getElementById('loadingError').textContent = e.message;
@@ -660,8 +664,8 @@ const App = {
     }
   },
 
-  // ── Play Session (Embedded Guacamole) ────────
-  guacClient: null,
+  // ── Play Session (noVNC) ─────────────────────
+  rfbClient: null,
 
   bindPlay() {
     document.getElementById('gameFullscreenBtn').addEventListener('click', () => this.toggleFullscreen());
@@ -693,8 +697,8 @@ const App = {
       document.getElementById('gameStatus').textContent = 'Connecting...';
       document.getElementById('gameLoading').classList.remove('hidden');
 
-      // Connect Guacamole client
-      this.connectGuacamole(session.wsUrl);
+      // Connect noVNC client
+      this.connectVNC(session.wsUrl);
 
     } catch (e) {
       console.error('Session error:', e);
@@ -705,70 +709,70 @@ const App = {
     }
   },
 
-  connectGuacamole(wsUrl) {
+  connectVNC(wsUrl) {
     const canvasEl = document.getElementById('gameCanvas');
     const loadingEl = document.getElementById('gameLoading');
     const statusEl = document.getElementById('gameStatus');
 
+    console.log('[VNC] Connecting to:', wsUrl);
+
     // Clean up previous client
-    if (this.guacClient) {
-      this.guacClient.disconnect();
-      this.guacClient = null;
-      // Remove old display
-      const oldCanvas = canvasEl.querySelector('div:not(.game-loading)');
-      if (oldCanvas) oldCanvas.remove();
+    if (this.rfbClient) {
+      console.log('[VNC] Cleaning up previous client');
+      this.rfbClient.disconnect();
+      this.rfbClient = null;
+      // Remove old noVNC screen element
+      const oldScreen = canvasEl.querySelector('div:not(.game-loading)');
+      if (oldScreen) oldScreen.remove();
     }
 
-    // Create WebSocket tunnel
-    const tunnel = new Guacamole.WebSocketTunnel(wsUrl);
-    const client = new Guacamole.Client(tunnel);
-    this.guacClient = client;
+    // noVNC needs a container div for its canvas
+    const screenDiv = document.createElement('div');
+    screenDiv.style.width = '100%';
+    screenDiv.style.height = '100%';
+    canvasEl.appendChild(screenDiv);
 
-    // Add display element
-    const display = client.getDisplay().getElement();
-    canvasEl.appendChild(display);
+    try {
+      const rfb = new RFB(screenDiv, wsUrl, {
+        wsProtocols: ['binary'],
+      });
+      this.rfbClient = rfb;
 
-    // Connect
-    client.connect();
+      // Scale to fit the container
+      rfb.scaleViewport = true;
+      rfb.resizeSession = false;
+      rfb.focusOnClick = true;
 
-    // State handlers
-    client.onstatechange = (state) => {
-      const states = { 0: 'Idle', 1: 'Connecting...', 2: 'Waiting...', 3: 'Connected', 4: 'Disconnecting...', 5: 'Disconnected' };
-      statusEl.textContent = states[state] || 'Unknown';
-
-      if (state === 3) {
-        // Connected — hide loading
+      rfb.addEventListener('connect', () => {
+        console.log('[VNC] Connected');
+        statusEl.textContent = 'Connected';
         loadingEl.classList.add('hidden');
-      } else if (state === 5) {
-        // Disconnected
+      });
+
+      rfb.addEventListener('disconnect', (e) => {
+        console.log('[VNC] Disconnected, clean:', e.detail.clean);
+        statusEl.textContent = 'Disconnected';
         loadingEl.classList.remove('hidden');
         loadingEl.querySelector('p').textContent = 'Disconnected';
-      }
-    };
+      });
 
-    client.onerror = (error) => {
-      console.error('Guacamole error:', error);
+      rfb.addEventListener('credentialsrequired', () => {
+        console.log('[VNC] Credentials required — sending VNC password');
+        // The VNC password is set on the server, noVNC prompts if needed
+        // For TightVNC, the password is handled at the VNC protocol level
+        rfb.sendCredentials({ password: '' });
+      });
+
+      rfb.addEventListener('desktopname', (e) => {
+        console.log('[VNC] Desktop name:', e.detail.name);
+      });
+
+    } catch (e) {
+      console.error('[VNC] Connection error:', e);
       statusEl.textContent = 'Error';
       loadingEl.classList.remove('hidden');
-      loadingEl.querySelector('p').textContent = error.message || 'Connection error';
-    };
-
-    // Forward keyboard events
-    const keyboard = new Guacamole.Keyboard(document);
-    keyboard.onkeydown = (keysym) => client.sendKeyEvent(1, keysym);
-    keyboard.onkeyup = (keysym) => client.sendKeyEvent(0, keysym);
-
-    // Forward mouse events
-    const mouse = new Guacamole.Mouse(display);
-    mouse.onmousedown = mouse.onmouseup = mouse.onmousemove = (mouseState) => {
-      client.sendMouseState(mouseState);
-    };
-
-    // Touch support
-    const touch = new Guacamole.Mouse.Touchpad(display);
-    touch.onmousedown = touch.onmouseup = touch.onmousemove = (mouseState) => {
-      client.sendMouseState(mouseState);
-    };
+      loadingEl.querySelector('p').textContent = e.message || 'Connection error';
+    }
   },
 
   toggleFullscreen() {
@@ -781,9 +785,9 @@ const App = {
   },
 
   async disconnectGame() {
-    if (this.guacClient) {
-      this.guacClient.disconnect();
-      this.guacClient = null;
+    if (this.rfbClient) {
+      this.rfbClient.disconnect();
+      this.rfbClient = null;
     }
 
     // Tell bridge to clean up
