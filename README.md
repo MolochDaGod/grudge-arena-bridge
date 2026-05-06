@@ -43,20 +43,24 @@ Player B (browser): wow.grudge-studio.com → Puter login → VNC stream → WoW
 
 The **local player** just runs WoW 1.7.1 with the realmlist pointed at the VPS IP and logs in normally.
 
-## Verified Systems
+## Verified Systems (2026-05-06)
 
-| System | Status | Details |
-|--------|--------|---------|
-| DNS | ✅ Verified | `wow.grudge-studio.com` → Cloudflare Proxy |
-| Cloudflare Tunnel | ✅ Verified | Routes `wow.grudge-studio.com` → VPS :3001 |
-| Bridge API | ✅ Code ready | Express server with auth, characters, queue, VNC |
-| Frontend | ✅ Code ready | Intro video, Puter auth, character creator, noVNC viewer |
-| Puter Auth | ✅ Integrated | `puterUuid` → MaNGOS account (auto-create via SOAP) |
-| VNC Streaming | ✅ Code ready | TightVNC + noVNC websocket proxy in server.js |
-| MaNGOS 1.7 | ✅ Deployed | realmd + mangosd + MySQL on VPS |
-| WoW Auto-Login | ✅ Code ready | wow-launcher.ps1 — SendKeys credentials into WoW.exe |
+Full local smoke test passed — all 6 services running, all API endpoints responding.
 
-> **Note:** VPS services need to be started after each reboot. See [Startup](#startup-order).
+| System | Status | Smoke Test Result |
+|--------|--------|-------------------|
+| DNS | ✅ Live | `wow.grudge-studio.com` → Cloudflare Proxy (172.67.132.73) |
+| Cloudflare Tunnel | ✅ Live | Routes `wow.grudge-studio.com` → VPS :3001 (installed as Windows service) |
+| Bridge API | ✅ Verified | `{"status":"ok","database":true,"soap":true}` |
+| Frontend | ✅ Verified | 10KB index.html served, intro video, all static assets 200 |
+| Puter Auth → SOAP | ✅ Verified | Login creates MaNGOS account automatically (e.g. `GAF9509067`) |
+| Character Options | ✅ Verified | 8 races, 9 classes, 40 valid combos returned from DB |
+| VNC Play Session | ✅ Verified | Returns `wss://wow.grudge-studio.com/vnc`, WoW.exe launched |
+| MaNGOS 1.7 | ✅ Verified | MySQL :3307, realmd :3724, mangosd :8085, SOAP :7878 all responding |
+| TightVNC | ✅ Verified | Listening on :5900, WoW desktop visible |
+| WoW Auto-Login | ✅ Verified | wow-launcher.ps1 starts WoW.exe and fills credentials via SendKeys |
+
+> **Note:** VPS services need to be started after each reboot. See [Deployment](#deployment).
 
 ## API Endpoints
 
@@ -110,30 +114,69 @@ grudge-arena-bridge/
 └── package.json
 ```
 
-## Startup Order
+## Deployment
 
-On the VPS, start services in this order:
+### Important: MySQL Port
+MaNGOS configs (`mangosd.conf`, `realmd.conf`) must use port **3307** to match the bundled MySQL.
+All `DatabaseInfo` lines should read `127.0.0.1;3307;root;root;<dbname>`.
 
-1. **MySQL** — via bropack launcher or `mysqld.exe`
-2. **realmd.exe** — realm/login server
-3. **mangosd.exe** — world server (wait for "World initialized")
-4. **TightVNC** — must be running for browser streaming
-5. **Bridge** — `node server.js` in this directory
+### Startup Order
+Start services in this order (same for VPS and local):
 
-Or run everything at once:
+1. **MySQL** — `mysql5\bin\mysqld.exe --console --port=3307` (wait for :3307)
+2. **realmd.exe** — realm/login server (wait for :3724)
+3. **mangosd.exe** — world server, takes 30-60s to load maps (wait for :8085 + :7878)
+4. **TightVNC** — must be running on :5900 for browser streaming
+5. **Bridge** — `node server.js` (wait for :3001)
+6. **cloudflared** — tunnel service (routes `wow.grudge-studio.com` → :3001)
+
+### One-Command Deploy
+
+**VPS:**
 ```powershell
 .\scripts\deploy-vps.ps1
+```
+
+**Local (bootstraps everything including TightVNC install):**
+```powershell
+.\scripts\bootstrap-local-web.ps1
+```
+
+### Port Verification
+```powershell
+foreach ($p in 3307,3724,8085,7878,5900,3001) {
+    $ok = (Test-NetConnection 127.0.0.1 -Port $p -WarningAction SilentlyContinue).TcpTestSucceeded
+    "$p -> $ok"
+}
+curl http://localhost:3001/api/health
+```
+
+### VNC Quality Tuning
+For better game streaming quality, set TightVNC registry values:
+```powershell
+$reg = "HKLM:\SOFTWARE\TightVNC\Server"
+Set-ItemProperty $reg -Name JpegQuality -Value 9 -Type DWord
+Set-ItemProperty $reg -Name RemoveWallpaper -Value 0 -Type DWord
+Set-ItemProperty $reg -Name PollingInterval -Value 30 -Type DWord
+Set-ItemProperty $reg -Name GrabTransparentWindows -Value 1 -Type DWord
+Restart-Service tvnserver
+```
+
+Set WoW to 720p windowed for optimal streaming in `WTF\Config.wtf`:
+```
+SET gxResolution "1280x720"
+SET gxWindow "1"
+SET gxMaximize "0"
 ```
 
 ## Local Development
 
 ```bash
 npm install
-# Copy .env.example to .env and configure
 npm run dev    # node --watch server.js
 ```
 
-Requires MySQL with MaNGOS databases and SOAP endpoint available locally.
+Requires the MaNGOS bropack running (MySQL, realmd, mangosd) and TightVNC on :5900.
 
 ## DNS & Networking
 
